@@ -13,6 +13,7 @@ const accountSlice = createSlice({
   reducers: {
     deposit(state, action) {
       state.balance += action.payload;
+      state.isLoading = false;
     },
     withdraw(state, action) {
       state.balance -= action.payload;
@@ -36,12 +37,32 @@ const accountSlice = createSlice({
       state.loan = 0;
       state.loanPurpose = "";
     },
+
+    convertingCurrency(state) {
+      state.isLoading = true;
+    },
   },
 });
 
 export default accountSlice.reducer;
-export const { deposit, withdraw, requestLoan, repayLoan } =
-  accountSlice.actions;
+export const { withdraw, requestLoan, repayLoan } = accountSlice.actions;
+
+export function deposit(amount, currency) {
+  if (currency === "USD") return { type: "account/deposit", payload: amount };
+
+  // THIS IS THUNKS - with thunks, you can return a function in every action creator. There, you can perform async operations such as API calls.
+  return async function (dispatch, getState) {
+    // you can dispatch as you please in thunks
+    dispatch({ type: "account/convertingCurrency" });
+
+    const response = await fetch(
+      `https://api.frankfurter.app/latest?amount=${amount}&from=${currency}&to=USD`
+    );
+    const data = await response.json();
+    const convertedAmount = data.rates.USD;
+    dispatch({ type: "account/deposit", payload: convertedAmount });
+  };
+}
 
 /*
 export default function bankReducer(state = initialState, action) {
